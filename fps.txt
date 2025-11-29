@@ -1,0 +1,195 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local CollectionService = game:GetService("CollectionService")
+
+local EventController = ReplicatedStorage:WaitForChild("Controllers").EventController.Events
+for _, child in EventController:GetChildren() do
+    child:Destroy()
+end
+local EVENT_PATTERNS = {
+    "1x1x1x1Map", "3RoadsMap", "4thOfJulyVFX", "BombardiroPlane", "BrazilHitbox", 
+    "RadioactiveMap", "YinYangMap", "BloodmoonVFX", "CandyMap", "ExtinctMap", 
+    "CrabRaveStage", "GlitchVFX", "RainbowVFX", "MoltenVFX", "SolarFlareVFX", 
+    "FuseMachine", "LaVaccaModel", "MatteoVFX", "NyanCatModel", "RainingTacoVFX",
+    "RainWeather", "StarfallVFX", "SnowWeather", "ConcertStage", "ConcertMap",
+    "EventPlane", "EventVFX", "EventStage", "EventMap", "EventExplosion",
+    "CrabFolder", "MeteorVFX", "CometVFX", "FireworkVFX", "DiscoProjectile",
+    "SummonVFX", "WindParts", "SmokeStage", "EventRig", "SanddrumRoll",
+    "EventHole", "EventCrater", "SnowPile", "BubblegumMachine"
+}
+
+local EVENT_TAGS = {
+    "BrazilHitbox", "BombardiroPlane", "1x1x1x1Map", "BubblegumMachine",
+    "MapVFX", "HideInBrazil", "HideInYinYang", "HideInRadioactive",
+    "HideIn1x1x1x1", "HideIn3Roads", "BombardiroCrocodiloPlayerVFX",
+    "1x1x1x1PlayerVFX", "ShowIn3Roads", "HideInConcert", "HideInExtinct",
+    "CrabRaveCrabFolder", "CrabRaveCrabs", "RainbowEventAttachment",
+    "LaVaccaModel", "LaVaccaPlayerVFX", "SnowPile", "BubbleGumProgress",
+    "RainbowModel", "HideInCandy", "HideInMolten", "HideInSnow",
+    "HideInRain", "HideInStarfall", "NyanCatModel"
+}
+
+local function shouldRemoveObject(instance)
+    local name = instance.Name
+
+    for _, pattern in EVENT_PATTERNS do
+        if name == pattern or name:match("^" .. pattern .. "%d*$") then
+            return true
+        end
+    end
+
+    for _, tag in EVENT_TAGS do
+        if CollectionService:HasTag(instance, tag) then
+            return true
+        end
+    end
+
+    if instance:FindFirstAncestor("Events") then
+        return true
+    end
+
+    return false
+end
+
+local function disableVFXModule()
+    local success, vfxModule = pcall(function()
+        return require(ReplicatedStorage.Shared.VFX)
+    end)
+
+    if success and vfxModule then
+        vfxModule.emit = function() end
+        vfxModule.enable = function() end
+        vfxModule.disable = function() end
+        print("✓ VFX module disabled")
+    end
+end
+
+local function disableEffectController()
+    local success, effectController = pcall(function()
+        return require(ReplicatedStorage.Controllers.EffectController)
+    end)
+
+    if success and effectController then
+        effectController.Activate = function() end
+        effectController.Run = function() end
+        effectController.Stop = function() end
+        print("✓ EffectController disabled")
+    end
+end
+
+local function processVFX(instance)
+    if instance:IsA("ParticleEmitter") then
+        instance.Enabled = false
+        instance.Rate = 0
+    elseif instance:IsA("Beam") then
+        instance.Enabled = false
+        instance.Transparency = NumberSequence.new(1)
+    elseif instance:IsA("PointLight") or instance:IsA("SpotLight") or instance:IsA("SurfaceLight") then
+        instance.Enabled = false
+        instance.Brightness = 0
+    elseif instance:IsA("Fire") or instance:IsA("Smoke") or instance:IsA("Sparkles") then
+        instance.Enabled = false
+    elseif instance:IsA("Sound") and instance:FindFirstAncestor("Events") then
+        instance.Volume = 0
+    end
+end
+
+local function cleanWorkspace()
+    print("Cleaning workspace...")
+    local removed = 0
+
+    workspace.DescendantAdded:Connect(function(descendant)
+        if shouldRemoveObject(descendant) then
+            descendant:Destroy()
+            removed = removed + 1
+        else
+
+            processVFX(descendant)
+        end
+    end)
+
+    for _, descendant in workspace:GetDescendants() do
+        if shouldRemoveObject(descendant) then
+            descendant:Destroy()
+            removed = removed + 1
+        else
+            processVFX(descendant)
+        end
+    end
+
+    print("✓ Workspace cleaned (" .. removed .. " objects removed)")
+end
+
+local function lockLighting()
+    print("Locking lighting...")
+
+    local originalAmbient = Lighting.Ambient
+    local originalOutdoorAmbient = Lighting.OutdoorAmbient
+    local originalBrightness = Lighting.Brightness
+    local originalClockTime = Lighting.ClockTime
+
+    Lighting.ChildAdded:Connect(function(child)
+        if child:IsA("Atmosphere") or 
+           child:IsA("Sky") or 
+           child:IsA("ColorCorrectionEffect") or
+           child:IsA("BloomEffect") or
+           child:IsA("BlurEffect") then
+            child:Destroy()
+        end
+    end)
+
+    Lighting:GetPropertyChangedSignal("Ambient"):Connect(function()
+        Lighting.Ambient = originalAmbient
+    end)
+
+    Lighting:GetPropertyChangedSignal("OutdoorAmbient"):Connect(function()
+        Lighting.OutdoorAmbient = originalOutdoorAmbient
+    end)
+
+    Lighting:GetPropertyChangedSignal("Brightness"):Connect(function()
+        Lighting.Brightness = originalBrightness
+    end)
+
+    Lighting:GetPropertyChangedSignal("ClockTime"):Connect(function()
+        Lighting.ClockTime = originalClockTime
+    end)
+
+    for _, child in Lighting:GetChildren() do
+        if child:IsA("Atmosphere") or 
+           child:IsA("Sky") or 
+           child:IsA("ColorCorrectionEffect") or
+           child:IsA("BloomEffect") or
+           child:IsA("BlurEffect") then
+            child:Destroy()
+        end
+    end
+
+    print("✓ Lighting locked")
+end
+
+local function initialize()
+    print("\nInitializing all systems...")
+
+    disableVFXModule()
+    disableEffectController()
+    lockLighting()
+    cleanWorkspace()
+
+    print("\n=================================")
+    print("✓ ALL EVENT VFX REMOVED")
+    print("✓ Zero FPS impact")
+    print("=================================")
+end
+
+if game:IsLoaded() then
+    initialize()
+else
+    game.Loaded:Wait()
+    initialize()
+end
+
+return {
+    Version = "2.2",
+    Description = "Ultimate VFX Remover - Optimized",
+    EventsSupported = 25
+}
