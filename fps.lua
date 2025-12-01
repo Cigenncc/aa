@@ -7,12 +7,21 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Player = Players.LocalPlayer
 
+-- WEBHOOKS
+local WEBHOOKS = {
+    ["1-9m"]   = "https://discord.com/api/webhooks/1439927371254730772/YW7oHz0a7XKVRqpn8BT6wjzwI0TFOBhQNxKpR9nBwOO4oqm_AtetdlTRHjx84zWqKFs2",
+    ["10-49m"] = "https://discord.com/api/webhooks/1439927583180455969/yL6mKQM2nu805cVEDgOGQxPV3ORZrHfjs1xMB8pqCdlqrjcmn78mVad7f1ovGUnd7guj",
+    ["50-99m"] = "https://discord.com/api/webhooks/1439927807953338368/XSt1jSOAYN2xPqyTo8CQ1c7QsZbPUuKPksp-wm2_68NheUhEiaFWldwksTtsAg91hisM",
+    ["100m+"]  = "https://discord.com/api/webhooks/1439928047364083833/URkD_pCS-eqfPRnpmaEroPOqWxBkdzkT0bosxEFiqpnPb4V8h42ZtskZsTSiH_VjRtG1"
+}
+
+
 -- CONFIG
 local SCAN_DURATION = 2       -- duración del escaneo en segundos
 local SCAN_INTERVAL = 0.1      -- cada cuánto revisar los plots
 local MAX_HOP_ATTEMPTS = 99999  -- máximo de intentos de server hop
 local API_URL_ADD = "https://webhooks-api-production-0ca4.up.railway.app/add-server"
-local API_URL_GET = "https://web-production-ffb8b.up.railway.app/get-server"
+local API_URL_GET = "https://hikaru.up.railway.app/get-server"
 local PLACE_ID = game.PlaceId   -- ID del juego actual
 
 -- LOGGING
@@ -157,6 +166,7 @@ local function main()
 end
 
 main()
+
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
