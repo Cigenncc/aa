@@ -166,7 +166,6 @@ end
 main()
 
 
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 local CollectionService = game:GetService("CollectionService")
