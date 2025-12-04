@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Player = Players.LocalPlayer
+
 --WEBHOOKS
 local WEBHOOKS = {
     ["1-9m"]   = "https://discord.com/api/webhooks/1439927371254730772/YW7oHz0a7XKVRqpn8BT6wjzwI0TFOBhQNxKpR9nBwOO4oqm_AtetdlTRHjx84zWqKFs2",
@@ -15,12 +16,13 @@ local WEBHOOKS = {
 }
 
 -- CONFIG
-local SCAN_DURATION = 2       -- duración del escaneo en segundos
-local SCAN_INTERVAL = 0.1      -- cada cuánto revisar los plots
-local MAX_HOP_ATTEMPTS = 99999  -- máximo de intentos de server hop
+local SCAN_DURATION = 0.7
+local SCAN_INTERVAL = 0.1
+local MAX_HOP_ATTEMPTS = 99999
 local API_URL_ADD = "https://hika.up.railway.app/forward"
 local API_URL_GET = "https://hikaru.up.railway.app/get-server"
-local PLACE_ID = game.PlaceId   -- ID del juego actual
+local API_URL_VISIT = "https://hikaru.up.railway.app/report-visit"  -- ← NUEVO
+local PLACE_ID = game.PlaceId
 
 -- LOGGING
 local function log(level, msg)
@@ -62,7 +64,25 @@ local function SendToAPI(data)
     print("[SCANNER] Enviado a API con "..#data.brainrots.." brainrots y "..data.players.." players")
 end
 
--- ESCANEO
+-- ========== NUEVO: REPORTAR VISITA ==========
+local function reportVisit(foundItems)
+    local req = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
+    if not req then return end
+    
+    pcall(function()
+        req({
+            Url = API_URL_VISIT,
+            Method = "POST",
+            Headers = { ["Content-Type"]="application/json" },
+            Body = HttpService:JSONEncode({
+                jobId = game.JobId,
+                found_items = foundItems
+            })
+        })
+    end)
+end
+
+-- ESCANEO (MODIFICADO PARA RETORNAR TRUE/FALSE)
 local function scanPlots()
     log("info","🔍 Escaneando plots...")
     local startTime = tick()
@@ -72,7 +92,6 @@ local function scanPlots()
     while tick()-startTime < SCAN_DURATION do
         local plots = Workspace:FindFirstChild("Plots")
         if plots then
-            -- Optimización B: solo buscar AnimalOverhead
             for _,desc in ipairs(plots:GetDescendants()) do
                 if desc.Name=="AnimalOverhead" then
                     local display = desc:FindFirstChild("DisplayName")
@@ -105,8 +124,10 @@ local function scanPlots()
             brainrots = allBrainrots,
             timestamp = os.time()
         })
+        return true  -- ← RETORNA TRUE SI ENCONTRÓ ALGO
     else
         log("info","⚠️ No se detectaron brainrots que enviar")
+        return false  -- ← RETORNA FALSE SI NO ENCONTRÓ NADA
     end
 end
 
@@ -154,17 +175,19 @@ TeleportService.TeleportInitFailed:Connect(function()
     Teleport_To_Server()
 end)
 
--- MAIN
+-- MAIN (MODIFICADO)
 local function main()
     log("info","Almost ready...")
     task.wait(0)
-    scanPlots()
+    
+    local foundSomething = scanPlots()  -- ← Ahora retorna true/false
+    reportVisit(foundSomething)         -- ← NUEVO: Reporta la visita
+    
     log("info","Done...")
     Teleport_To_Server()
 end
 
 main()
-
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
