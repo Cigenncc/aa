@@ -64,21 +64,35 @@ local function SendToAPI(data)
     print("[SCANNER] Enviado a API con "..#data.brainrots.." brainrots y "..data.players.." players")
 end
 
--- ========== NUEVO: REPORTAR VISITA ==========
+-- ========== NUEVO: REPORTAR VISITA (MEJORADO) ==========
 local function reportVisit(foundItems)
-    local req = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
-    if not req then return end
-    
-    pcall(function()
-        req({
-            Url = API_URL_VISIT,
-            Method = "POST",
-            Headers = { ["Content-Type"]="application/json" },
-            Body = HttpService:JSONEncode({
-                jobId = game.JobId,
-                found_items = foundItems
+    spawn(function()  -- ← Ejecutar en paralelo
+        local req = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
+        if not req then 
+            warn("[TRACKING] http_request no disponible")
+            return 
+        end
+        
+        local success, err = pcall(function()
+            local resp = req({
+                Url = API_URL_VISIT,
+                Method = "POST",
+                Headers = { ["Content-Type"]="application/json" },
+                Body = HttpService:JSONEncode({
+                    jobId = game.JobId,
+                    found_items = foundItems
+                })
             })
-        })
+            if resp and resp.StatusCode == 200 then
+                log("info", "✓ Visita reportada")
+            else
+                warn("[TRACKING] Status: "..(resp and resp.StatusCode or "nil"))
+            end
+        end)
+        
+        if not success then
+            warn("[TRACKING] Error: "..tostring(err))
+        end
     end)
 end
 
@@ -182,6 +196,7 @@ local function main()
     
     local foundSomething = scanPlots()  -- ← Ahora retorna true/false
     reportVisit(foundSomething)         -- ← NUEVO: Reporta la visita
+    task.wait(0.15)                     -- ← NUEVO: Esperar a que se envíe el reporte
     
     log("info","Done...")
     Teleport_To_Server()
